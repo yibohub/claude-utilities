@@ -1,0 +1,14 @@
+{
+  "name": "claude-utilities",
+  "description": "System utilities for Claude Code including memory monitoring and performance optimization tools",
+  "author": {
+    "name": "yibohub",
+    "email": "4925135@qq.com"
+  },
+  "version": "1.0.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yibohub/claude-utilities"
+  }
+}
