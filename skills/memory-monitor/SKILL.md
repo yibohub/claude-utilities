@@ -1,6 +1,6 @@
 ---
 name: memory-monitor
-description: Monitor system memory usage and automatically clean up zombie Claude processes. Use when system is slow, memory usage is high, or when user mentions memory issues, zombie processes, or performance problems.
+description: Automatically monitor system memory at session start and during long tasks. Clean up zombie Claude processes proactively. Use when system is slow, memory usage is high, or when user mentions memory issues, zombie processes, or performance problems. This skill auto-invokes at session start when memory > 85% or zombie processes > 10.
 ---
 
 # Memory Monitor
@@ -21,6 +21,42 @@ For automatic monitoring, start the daemon:
 ~/.claude/skills/memory-monitor/memory-monitor-ctl.sh start
 ```
 
+## Proactive Behavior
+
+This skill automatically monitors system health to prevent performance issues before they impact your work.
+
+### Auto-Check at Session Start
+
+At the beginning of each session, automatically check:
+- System memory usage percentage
+- Zombie Claude process count
+- MCP server count
+
+**Alert and suggest cleanup if:**
+- Memory usage > 85%
+- Zombie processes > 10
+- Memory usage > 80% AND zombie processes > 5
+
+**Silent thresholds** (no alert needed):
+- Memory < 80% AND zombie processes < 5
+
+### Auto-Check During Long Tasks
+
+For complex tasks (estimated > 5 minutes execution time), recheck:
+- Every 10 minutes during task execution
+- Before starting resource-intensive operations
+- After completing major work items
+
+This ensures memory issues don't accumulate during long-running sessions.
+
+### Manual Trigger
+
+You can also invoke this skill manually:
+- System feels slow or sluggish
+- User mentions "memory", "performance", "zombie"
+- Before starting a new complex task
+- Periodic maintenance (recommend weekly)
+
 ## When to Use
 
 - System feels slow or sluggish
@@ -28,6 +64,9 @@ For automatic monitoring, start the daemon:
 - Multiple Claude sessions are running
 - User mentions "memory", "performance", "zombie processes"
 - Periodic maintenance (recommend running weekly)
+- **At session start** if memory > 85% or zombie processes > 10 (automatic)
+- **During complex tasks** if memory degrades or process count increases (automatic)
+- **Before starting** resource-intensive operations
 
 ## How It Works
 
@@ -51,6 +90,24 @@ Zombie processes are created when:
 - Logs all actions for audit trail
 
 ## Instructions
+
+### Automatic Monitoring (Default)
+
+This skill automatically checks system health without requiring manual invocation:
+
+**At session start:**
+- Runs baseline memory check
+- Identifies potential issues
+- Alerts if thresholds exceeded (memory > 85%, zombie processes > 10)
+
+**During complex tasks:**
+- Monitors memory trends
+- Suggests cleanup if degradation detected
+- Rechecks every 10 minutes for long-running tasks
+
+**Silent operation:**
+- No alerts when memory < 80% AND zombie processes < 5
+- Runs quietly in the background during normal operation
 
 ### Manual Check and Clean
 

@@ -23,10 +23,17 @@ git clone https://github.com/yibohub/claude-utilities ~/.claude/plugins/claude-u
 
 Automatically monitors system memory usage and cleans up zombie Claude processes to maintain performance.
 
+**Proactive Monitoring (NEW):**
+- **Session start**: Automatically checks if memory > 85% or zombie processes > 10
+- **During tasks**: Rechecks every 10 minutes during long-running tasks
+- **Silent operation**: No alerts when memory < 80% AND zombie processes < 5
+
 **When to use:**
-- System feels slow or sluggish
-- Memory usage is abnormally high
-- Multiple Claude sessions are running
+- Automatic: At session start if memory > 85% or zombie processes > 10
+- Automatic: During complex tasks if memory degrades
+- Manual: System feels slow or sluggish
+- Manual: Memory usage is abnormally high
+- Manual: Multiple Claude sessions are running
 
 **Usage:**
 ```bash
