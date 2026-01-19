@@ -21,6 +21,23 @@ git clone https://github.com/yibohub/claude-utilities ~/.claude/plugins/claude-u
 git clone https://github.com/yibohub/claude-utilities ~/.claude/plugins/claude-utilities
 ```
 
+## Upgrade
+
+**⚠️ 注意：升级时不要使用 `git clone`，目录已存在会导致报错**
+
+正确升级流程：
+
+```bash
+cd ~/.claude/plugins/claude-utilities
+git pull
+./update.sh
+```
+
+升级脚本会自动：
+- 停止旧版守护进程
+- 更新配置文件
+- 启动新版守护进程
+
 ## Features
 
 ### Memory Monitor

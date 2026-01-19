@@ -1,5 +1,5 @@
 #!/bin/bash
-# claude-utilities 自动安装脚本
+# claude-utilities 升级脚本
 
 set -e
 
@@ -7,22 +7,20 @@ PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOOKS_DIR="$HOME/.claude/hooks/SessionStart"
 SKILL_DIR="$PLUGIN_DIR/skills/memory-monitor"
 
-# 检测是否已安装
-if [ -f "$HOOKS_DIR/memory-check.sh" ]; then
-    echo "⚠️  检测到已安装，如需升级请运行: ./update.sh"
-    echo ""
-    bash "$SKILL_DIR/scripts/memory-monitor-ctl.sh" status 2>/dev/null || true
-    exit 0
+echo "🔄 正在升级 claude-utilities..."
+
+# 检查是否已安装
+if [ ! -d "$HOOKS_DIR" ]; then
+    echo "❌ 未检测到安装，请先运行 install.sh"
+    exit 1
 fi
 
-echo "🔧 正在安装 claude-utilities..."
+# 1. 停止旧守护进程
+echo "🛑 停止旧版守护进程..."
+bash "$SKILL_DIR/scripts/memory-monitor-ctl.sh" stop 2>/dev/null || true
 
-# 1. 创建 hooks 目录
-echo "📁 创建 hooks 目录..."
-mkdir -p "$HOOKS_DIR"
-
-# 2. 创建 SessionStart hook
-echo "📝 配置 SessionStart hook..."
+# 2. 更新 SessionStart hook
+echo "📝 更新 SessionStart hook..."
 cat > "$HOOKS_DIR/memory-check.sh" << 'EOF'
 #!/bin/bash
 # Memory Monitor SessionStart Hook
@@ -47,16 +45,12 @@ EOF
 
 chmod +x "$HOOKS_DIR/memory-check.sh"
 
-# 3. 启动内存监控守护进程
-echo "🚀 启动内存监控守护进程..."
-bash "$SKILL_DIR/scripts/memory-monitor-ctl.sh" start 2>/dev/null || true
+# 3. 启动新守护进程
+echo "🚀 启动新版守护进程..."
+bash "$SKILL_DIR/scripts/memory-monitor-ctl.sh" start
 
 echo ""
-echo "✅ 安装完成！"
-echo ""
-echo "已配置："
-echo "  ✓ SessionStart hook (会话开始时检查内存)"
-echo "  ✓ 内存监控守护进程 (每5分钟自动检查)"
+echo "✅ 升级完成！"
 echo ""
 echo "管理命令："
 echo "  查看状态: $SKILL_DIR/scripts/memory-monitor-ctl.sh status"
