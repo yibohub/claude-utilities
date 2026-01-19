@@ -2,10 +2,10 @@
 # Memory Monitor Daemon
 # 后台自动监控内存，超阈值时自动清理
 
-# 配置
-CHECK_INTERVAL=300  # 检查间隔（秒），默认 5 分钟
-MEMORY_THRESHOLD=75  # 内存阈值
-MAX_CLAUDE_PROCESSES=8  # 最大进程数
+# 配置（支持环境变量覆盖）
+CHECK_INTERVAL=${CHECK_INTERVAL:-300}  # 检查间隔（秒），默认 5 分钟
+MEMORY_THRESHOLD=${MEMORY_THRESHOLD:-75}  # 内存阈值
+MAX_CLAUDE_PROCESSES=${MAX_CLAUDE_PROCESSES:-15}  # 最大进程数
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="$SCRIPT_DIR/../memory-monitor.log"
 

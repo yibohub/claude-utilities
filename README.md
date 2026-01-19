@@ -79,14 +79,42 @@ Automatically monitors system memory usage and cleans up zombie Claude processes
 
 **Configuration:**
 
-Environment variables:
-- `MEMORY_THRESHOLD`: Memory % that triggers warning (default: 80)
-- `MAX_CLAUDE_PROCESSES`: Max Claude processes before warning (default: 10)
-- `AUTO_CLEAN`: Skip confirmation prompt (default: false)
+### 环境变量（临时修改）
 
-Example:
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `MEMORY_THRESHOLD` | 75 (守护进程) / 80 (手动) | 内存告警阈值 (%) |
+| `MAX_CLAUDE_PROCESSES` | 15 (守护进程) / 10 (手动) | 最大进程数 |
+| `AUTO_CLEAN` | false | 跳过确认直接清理 |
+| `CHECK_INTERVAL` | 300 | 守护进程检查间隔（秒） |
+
+**临时修改示例：**
 ```bash
-MEMORY_THRESHOLD=70 AUTO_CLEAN=true ~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor.sh
+# 手动检查时临时修改
+MEMORY_THRESHOLD=70 MAX_CLAUDE_PROCESSES=20 ~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor.sh
+
+# 启动守护进程时临时修改
+MEMORY_THRESHOLD=70 MAX_CLAUDE_PROCESSES=20 ~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor-ctl.sh start
+```
+
+### 永久修改
+
+编辑守护进程脚本修改默认值：
+
+```bash
+nano ~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor-daemon.sh
+```
+
+修改第 6-8 行的默认值：
+```bash
+CHECK_INTERVAL=${CHECK_INTERVAL:-300}  # 检查间隔（秒）
+MEMORY_THRESHOLD=${MEMORY_THRESHOLD:-75}  # 内存阈值
+MAX_CLAUDE_PROCESSES=${MAX_CLAUDE_PROCESSES:-15}  # 最大进程数
+```
+
+修改后重启守护进程：
+```bash
+~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor-ctl.sh restart
 ```
 
 ## Plugin Structure
