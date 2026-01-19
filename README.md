@@ -4,12 +4,16 @@ System utilities for Claude Code including memory monitoring and performance opt
 
 ## Installation
 
-### Via Plugin Marketplace (Recommended)
+### Quick Install (Recommended)
 
 ```bash
-/plugin marketplace add https://github.com/yibohub/claude-utilities
-/plugin install claude-utilities
+git clone https://github.com/yibohub/claude-utilities ~/.claude/plugins/claude-utilities
+~/.claude/plugins/claude-utilities/install.sh
 ```
+
+**一键安装将自动配置：**
+- ✅ SessionStart hook（会话开始时检查内存）
+- ✅ 内存监控守护进程（每5分钟自动检查）
 
 ### Manual Installation
 

@@ -10,5 +10,11 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/yibohub/claude-utilities"
-  }
+  },
+  "skills": [
+    {
+      "name": "memory-monitor",
+      "path": "skills/memory-monitor/SKILL.md"
+    }
+  ]
 }
