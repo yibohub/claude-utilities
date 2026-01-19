@@ -25,7 +25,13 @@ git clone https://github.com/yibohub/claude-utilities ~/.claude/plugins/claude-u
 
 **⚠️ 注意：升级时不要使用 `git clone`，目录已存在会导致报错**
 
-正确升级流程：
+### 一键升级（推荐）
+
+```bash
+~/.claude/plugins/claude-utilities/upgrade.sh
+```
+
+### 手动升级
 
 ```bash
 cd ~/.claude/plugins/claude-utilities
