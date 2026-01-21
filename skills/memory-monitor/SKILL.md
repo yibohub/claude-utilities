@@ -1,186 +1,169 @@
 ---
 name: memory-monitor
-description: Automatically monitor system memory at session start and during long tasks. Clean up zombie Claude processes proactively. Use when system is slow, memory usage is high, or when user mentions memory issues, zombie processes, or performance problems. This skill auto-invokes at session start when memory > 85% or zombie processes > 10.
+description: Automatically monitor system memory via systemd service. Clean up zombie Claude processes proactively. Use when system is slow, memory usage is high, or when user mentions memory issues, zombie processes, or performance problems. The service runs automatically in background after installation.
 ---
 
 # Memory Monitor
 
-Monitor system memory usage and automatically clean up zombie Claude processes to maintain system performance.
+通过 systemd 系统服务自动监控系统内存使用，并清理僵尸 Claude 进程以保持系统性能。
 
-## Quick Start
+## 快速开始
 
-Check current memory status and clean up zombie processes:
-
-```bash
-~/.claude/skills/memory-monitor/memory-monitor.sh
-```
-
-For automatic monitoring, start the daemon:
+运行安装脚本自动配置系统服务：
 
 ```bash
-~/.claude/skills/memory-monitor/memory-monitor-ctl.sh start
+cd /path/to/claude-utilities
+./install.sh
 ```
 
-## Proactive Behavior
+安装完成后，服务会自动启动并设置为开机自启。
 
-This skill automatically monitors system health to prevent performance issues before they impact your work.
+## 工作原理
 
-### Auto-Check at Session Start
+### 系统服务模式
 
-At the beginning of each session, automatically check:
-- System memory usage percentage
-- Zombie Claude process count
-- MCP server count
+内存监控作为 **systemd 系统服务**运行，具有以下特性：
 
-**Alert and suggest cleanup if:**
-- Memory usage > 85%
-- Zombie processes > 10
-- Memory usage > 80% AND zombie processes > 5
+- **开机自启**：系统启动后自动运行
+- **自动重启**：服务异常退出时自动重启（10秒后）
+- **安全加固**：使用 NoNewPrivileges、PrivateTmp 等 systemd 安全特性
+- **日志集成**：日志同时输出到 journalctl 和文件
 
-**Silent thresholds** (no alert needed):
-- Memory < 80% AND zombie processes < 5
+### 监控与清理逻辑
 
-### Auto-Check During Long Tasks
+守护进程定期检查（默认每 5 分钟）：
 
-For complex tasks (estimated > 5 minutes execution time), recheck:
-- Every 10 minutes during task execution
-- Before starting resource-intensive operations
-- After completing major work items
+| 检查项 | 默认阈值 |
+|-------|---------|
+| 系统内存使用率 | 75% |
+| Claude 进程数 | 15 个 |
 
-This ensures memory issues don't accumulate during long-running sessions.
+**触发清理条件**（满足任一即执行）：
+- 内存使用率 ≥ 75%
+- Claude 进程数 ≥ 15 个
 
-### Manual Trigger
+**僵尸进程识别**：
+1. TTY 状态为 `?`（无终端）
+2. 进程名匹配 `claude$`
+3. 安全规则：**从不**清理有活跃终端的进程
 
-You can also invoke this skill manually:
-- System feels slow or sluggish
-- User mentions "memory", "performance", "zombie"
-- Before starting a new complex task
-- Periodic maintenance (recommend weekly)
+### 日志位置
 
-## When to Use
+- **journalctl**: `sudo journalctl -u claude-memory-monitor -f`
+- **文件日志**: `~/.claude/plugins/claude-utilities/skills/memory-monitor/memory-monitor.log`
 
-- System feels slow or sluggish
-- Memory usage is abnormally high
-- Multiple Claude sessions are running
-- User mentions "memory", "performance", "zombie processes"
-- Periodic maintenance (recommend running weekly)
-- **At session start** if memory > 85% or zombie processes > 10 (automatic)
-- **During complex tasks** if memory degrades or process count increases (automatic)
-- **Before starting** resource-intensive operations
+## 使用方法
 
-## How It Works
-
-### Detection Strategy
-
-The script identifies zombie Claude processes by checking:
-1. **TTY status**: Zombies have `?` in the TTY column (no terminal)
-2. **Process name**: Matches `claude$` (main Claude processes)
-3. **Memory usage**: Calculates total memory that can be reclaimed
-
-Zombie processes are created when:
-- Terminal window closes without terminating Claude
-- Network interruption leaves orphaned sessions
-- System crashes leave residual processes
-
-### Safety Rules
-
-- **Never** kills processes with active terminals (preserves user sessions)
-- **Never** kills non-Claude processes
-- Requires confirmation before cleaning (unless AUTO_CLEAN is enabled)
-- Logs all actions for audit trail
-
-## Instructions
-
-### Automatic Monitoring (Default)
-
-This skill automatically checks system health without requiring manual invocation:
-
-**At session start:**
-- Runs baseline memory check
-- Identifies potential issues
-- Alerts if thresholds exceeded (memory > 85%, zombie processes > 10)
-
-**During complex tasks:**
-- Monitors memory trends
-- Suggests cleanup if degradation detected
-- Rechecks every 10 minutes for long-running tasks
-
-**Silent operation:**
-- No alerts when memory < 80% AND zombie processes < 5
-- Runs quietly in the background during normal operation
-
-### Manual Check and Clean
-
-Run the main script to check current status:
+### 查看服务状态
 
 ```bash
-~/.claude/skills/memory-monitor/memory-monitor.sh
+# 使用 systemctl
+systemctl status claude-memory-monitor
+
+# 或使用控制脚本
+~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor-ctl.sh status
 ```
 
-The script will:
-1. Display current memory usage percentage
-2. Count Claude and MCP server processes
-3. Identify zombie processes (TTY = `?`)
-4. Ask for confirmation before cleaning
-5. Display memory freed after cleanup
-
-### Automatic Monitoring
-
-Start the daemon for continuous monitoring:
+### 启动/停止服务
 
 ```bash
-# Start daemon
-~/.claude/skills/memory-monitor/memory-monitor-ctl.sh start
+# 使用 systemctl
+sudo systemctl start claude-memory-monitor
+sudo systemctl stop claude-memory-monitor
+sudo systemctl restart claude-memory-monitor
 
-# Check status
-~/.claude/skills/memory-monitor/memory-monitor-ctl.sh status
-
-# View live logs
-~/.claude/skills/memory-monitor/memory-monitor-ctl.sh log
-
-# Stop daemon
-~/.claude/skills/memory-monitor/memory-monitor-ctl.sh stop
+# 或使用控制脚本（兼容模式）
+~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor-ctl.sh start
+~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor-ctl.sh stop
+~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor-ctl.sh restart
 ```
 
-The daemon runs every 5 minutes and automatically cleans when:
-- Memory usage exceeds 75%
-- Claude process count exceeds 8
-
-### One-Time Check
-
-Check without cleanup:
+### 查看日志
 
 ```bash
-~/.claude/skills/memory-monitor/memory-monitor-ctl.sh check
+# 实时查看 systemd 日志
+sudo journalctl -u claude-memory-monitor -f
+
+# 实时查看文件日志
+tail -f ~/.claude/plugins/claude-utilities/skills/memory-monitor/memory-monitor.log
 ```
 
-### Auto-Clean Mode
-
-Skip confirmation prompt:
+### 手动执行检查
 
 ```bash
-AUTO_CLEAN=true ~/.claude/skills/memory-monitor/memory-monitor.sh
+~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor.sh
 ```
 
-## Configuration
-
-Environment variables:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MEMORY_THRESHOLD` | 80 | Memory % that triggers warning |
-| `MAX_CLAUDE_PROCESSES` | 10 | Max Claude processes before warning |
-| `AUTO_CLEAN` | false | Skip confirmation prompt |
-
-Example:
+### 开机自启管理
 
 ```bash
-MEMORY_THRESHOLD=70 MAX_CLAUDE_PROCESSES=5 ~/.claude/skills/memory-monitor/memory-monitor.sh
+# 启用开机自启
+sudo systemctl enable claude-memory-monitor
+
+# 禁用开机自启
+sudo systemctl disable claude-memory-monitor
 ```
 
-## Examples
+## 配置
 
-**Example 1: Normal State**
+修改服务文件中的环境变量来调整配置：
+
+```bash
+sudo vim /etc/systemd/system/claude-memory-monitor.service
+```
+
+| 环境变量 | 默认值 | 说明 |
+|---------|-------|------|
+| `CHECK_INTERVAL` | 300 | 检查间隔（秒） |
+| `MEMORY_THRESHOLD` | 75 | 内存阈值（%） |
+| `MAX_CLAUDE_PROCESSES` | 15 | 最大 Claude 进程数 |
+
+修改后需要重新加载并重启服务：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart claude-memory-monitor
+```
+
+## 卸载
+
+```bash
+# 停止并禁用服务
+sudo systemctl stop claude-memory-monitor
+sudo systemctl disable claude-memory-monitor
+
+# 删除服务文件
+sudo rm /etc/systemd/system/claude-memory-monitor.service
+
+# 重新加载 systemd
+sudo systemctl daemon-reload
+```
+
+## 示例
+
+### 服务状态输出
+
+```
+● claude-memory-monitor.service - Claude Memory Monitor Daemon
+     Loaded: loaded (/etc/systemd/system/claude-memory-monitor.service; enabled; preset: disabled)
+     Active: active (running) since Wed 2026-01-15 10:30:00 CST; 2h ago
+   Main PID: 12345 (memory-monitor)
+      Tasks: 1 (limit: 4679)
+     Memory: 2.5M (peak: 3.2M)
+        CPU: 150ms
+     CGroup: /system.slice/claude-memory-monitor.service
+             └─12345 /bin/bash /path/to/memory-monitor-daemon.sh
+
+Jan 15 10:30:00 host memory-monitor-daemon.sh[12345]: === 内存监控守护进程启动 ===
+Jan 15 10:30:00 host memory-monitor-daemon.sh[12345]: 配置: 阈值=75%, 最大进程=15, 间隔=300s
+Jan 15 10:35:00 host memory-monitor-daemon.sh[12345]: 检查: 内存=65%, Claude进程=4个
+Jan 15 10:40:00 host memory-monitor-daemon.sh[12345]: 检查: 内存=82%, Claude进程=18个
+Jan 15 10:40:05 host memory-monitor-daemon.sh[12345]: ⚠️ Claude进程超过阈值 (18 >= 15)
+Jan 15 10:40:05 host memory-monitor-daemon.sh[12345]: 发现 14 个僵尸进程
+Jan 15 10:40:10 host memory-monitor-daemon.sh[12345]: ✅ 清理完成: 内存 82% -> 68%, 进程 18 -> 4
+```
+
+### 手动检查输出
 
 ```
 🔍 内存监控报告
@@ -196,7 +179,7 @@ MCP 服务器: 17 个
 ✅ 系统状态良好，无需清理
 ```
 
-**Example 2: Zombies Found**
+### 发现僵尸进程时的输出
 
 ```
 🔍 内存监控报告
@@ -227,81 +210,36 @@ MCP 服务器: 22 个
   已清理: 24 个僵尸会话
 ```
 
-**Example 3: Daemon Status**
+## 故障排查
+
+### 服务无法启动
+
+检查服务文件路径是否正确：
 
 ```bash
-$ ~/.claude/skills/memory-monitor/memory-monitor-ctl.sh status
-✅ 守护进程运行中 (PID: 12345)
-📋 日志: tail -f ~/.claude/skills/memory-monitor.log
-
-最近日志:
-[2026-01-15 12:30:00] 检查: 内存=65%, Claude进程=4个
-[2026-01-15 12:35:00] 检查: 内存=68%, Claude进程=4个
-[2026-01-15 12:40:00] 检查: 内存=72%, Claude进程=6个
+sudo systemctl status claude-memory-monitor
 ```
 
-## Scripts
+### 日志查看
 
-| Script | Purpose |
-|--------|---------|
-| `memory-monitor.sh` | Main check and clean script |
-| `memory-monitor-daemon.sh` | Background daemon (do not run directly) |
-| `memory-monitor-ctl.sh` | Control script: start/stop/status/check/log |
-
-## Output Template
-
-The script produces standardized output:
-
-```
-🔍 内存监控报告
-====================
-
-系统内存: {X}% ({used} / {total})
-  {status}
-Claude 进程: {N} 个
-  {status}
-MCP 服务器: {N} 个
-
-====================
-
-{zombie details or success message}
-```
-
-## Guidelines
-
-- Always show status before taking action
-- Never kill processes with active terminals
-- Log all actions for troubleshooting
-- Use daemon for production environments
-- Run manually for one-time cleanup
-- Check logs if unexpected behavior occurs
-- Adjust thresholds based on system capacity
-
-## Troubleshooting
-
-**Problem: Script shows "❌ 守护进程已在运行" but daemon isn't working**
-
-Solution: The daemon may have crashed. Run:
 ```bash
-~/.claude/skills/memory-monitor/memory-monitor-ctl.sh stop
-~/.claude/skills/memory-monitor/memory-monitor-ctl.sh start
+# systemd 日志
+sudo journalctl -u claude-memory-monitor -n 50
+
+# 文件日志
+tail -50 ~/.claude/plugins/claude-utilities/skills/memory-monitor/memory-monitor.log
 ```
 
-**Problem: Memory still high after cleanup**
+### 清理后内存仍然高
 
-Solution: Check what's using memory:
+检查其他占用内存的进程：
+
 ```bash
 ps aux --sort=-%mem | head -20
 ```
-The issue may be non-Claude processes.
 
-**Problem: Script kills active session**
+问题可能来自非 Claude 进程。
 
-This should never happen. Report the bug with:
-```bash
-ps aux | grep "claude$" | grep -v grep
-```
+## 高级
 
-## Advanced
-
-For detailed implementation and modification guide, see [REFERENCE.md](REFERENCE.md).
+详细实现和修改指南请参考 [REFERENCE.md](REFERENCE.md)。

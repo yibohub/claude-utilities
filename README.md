@@ -1,10 +1,10 @@
 # Claude Utilities
 
-System utilities for Claude Code including memory monitoring and performance optimization tools.
+Claude Code 系统实用工具集，包含内存监控和性能优化工具。
 
-## Installation
+## 安装
 
-### Quick Install (Recommended)
+### 快速安装（推荐）
 
 ```bash
 git clone https://github.com/yibohub/claude-utilities ~/.claude/plugins/claude-utilities
@@ -12,16 +12,16 @@ git clone https://github.com/yibohub/claude-utilities ~/.claude/plugins/claude-u
 ```
 
 **一键安装将自动配置：**
-- ✅ SessionStart hook（会话开始时检查内存）
-- ✅ 内存监控守护进程（每5分钟自动检查）
+- ✅ systemd 系统服务（开机自启）
+- ✅ 内存监控守护进程（每 5 分钟自动检查）
 
-### Manual Installation
+### 手动安装
 
 ```bash
 git clone https://github.com/yibohub/claude-utilities ~/.claude/plugins/claude-utilities
 ```
 
-## Upgrade
+## 升级
 
 **⚠️ 注意：升级时不要使用 `git clone`，目录已存在会导致报错**
 
@@ -40,142 +40,163 @@ git pull
 ```
 
 升级脚本会自动：
-- 停止旧版守护进程
+- 停止旧版服务
 - 更新配置文件
-- 启动新版守护进程
+- 启动新版服务
 
-## Features
+## 功能
 
-### Memory Monitor
+### 内存监控 (Memory Monitor)
 
-Automatically monitors system memory usage and cleans up zombie Claude processes to maintain performance.
+通过 systemd 系统服务自动监控内存使用，并清理僵尸 Claude 进程。
 
-**Proactive Monitoring (NEW):**
-- **Session start**: Automatically checks if memory > 85% or zombie processes > 10
-- **During tasks**: Rechecks every 10 minutes during long-running tasks
-- **Silent operation**: No alerts when memory < 80% AND zombie processes < 5
+**系统服务特性：**
+- **开机自启**：系统启动后自动运行
+- **自动重启**：异常退出 10 秒后自动恢复
+- **持续监控**：每 5 分钟检查一次
+- **日志集成**：支持 journalctl 和文件日志
 
-**When to use:**
-- Automatic: At session start if memory > 85% or zombie processes > 10
-- Automatic: During complex tasks if memory degrades
-- Manual: System feels slow or sluggish
-- Manual: Memory usage is abnormally high
-- Manual: Multiple Claude sessions are running
+**触发清理条件（满足任一即执行）：**
+- 内存使用率 ≥ 75%
+- Claude 进程数 ≥ 15 个
 
-**Usage:**
+**使用方法：**
+
 ```bash
-# Manual check
+# 查看服务状态
+systemctl status claude-memory-monitor
+
+# 停止服务
+sudo systemctl stop claude-memory-monitor
+
+# 启动服务
+sudo systemctl start claude-memory-monitor
+
+# 重启服务
+sudo systemctl restart claude-memory-monitor
+
+# 查看实时日志
+sudo journalctl -u claude-memory-monitor -f
+
+# 手动执行一次检查
 ~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor.sh
-
-# Start daemon (automatic monitoring)
-~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor-ctl.sh start
-
-# Check daemon status
-~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor-ctl.sh status
-
-# Stop daemon
-~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor-ctl.sh stop
 ```
 
-**Configuration:**
-
-### 环境变量（临时修改）
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `MEMORY_THRESHOLD` | 75 (守护进程) / 80 (手动) | 内存告警阈值 (%) |
-| `MAX_CLAUDE_PROCESSES` | 15 (守护进程) / 10 (手动) | 最大进程数 |
-| `AUTO_CLEAN` | false | 跳过确认直接清理 |
-| `CHECK_INTERVAL` | 300 | 守护进程检查间隔（秒） |
-
-**临时修改示例：**
-```bash
-# 手动检查时临时修改
-MEMORY_THRESHOLD=70 MAX_CLAUDE_PROCESSES=20 ~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor.sh
-
-# 启动守护进程时临时修改
-MEMORY_THRESHOLD=70 MAX_CLAUDE_PROCESSES=20 ~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor-ctl.sh start
-```
+**配置：**
 
 ### 永久修改
 
-编辑守护进程脚本修改默认值：
+编辑系统服务文件：
 
 ```bash
-nano ~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor-daemon.sh
+sudo vim /etc/systemd/system/claude-memory-monitor.service
 ```
 
-修改第 6-8 行的默认值：
+修改环境变量：
+```ini
+Environment="CHECK_INTERVAL=300"
+Environment="MEMORY_THRESHOLD=75"
+Environment="MAX_CLAUDE_PROCESSES=15"
+```
+
+修改后重新加载并重启：
 ```bash
-CHECK_INTERVAL=${CHECK_INTERVAL:-300}  # 检查间隔（秒）
-MEMORY_THRESHOLD=${MEMORY_THRESHOLD:-75}  # 内存阈值
-MAX_CLAUDE_PROCESSES=${MAX_CLAUDE_PROCESSES:-15}  # 最大进程数
+sudo systemctl daemon-reload
+sudo systemctl restart claude-memory-monitor
 ```
 
-修改后重启守护进程：
+### 临时修改（手动检查时）
+
 ```bash
-~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor-ctl.sh restart
+MEMORY_THRESHOLD=70 MAX_CLAUDE_PROCESSES=20 \
+~/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor.sh
 ```
 
-## Plugin Structure
+**配置参数：**
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `CHECK_INTERVAL` | 300 | 检查间隔（秒） |
+| `MEMORY_THRESHOLD` | 75 | 内存告警阈值 (%) |
+| `MAX_CLAUDE_PROCESSES` | 15 | 最大进程数 |
+| `AUTO_CLEAN` | false | 跳过确认直接清理 |
+
+## 插件结构
 
 ```
 claude-utilities/
 ├── .claude-plugin/
-│   └── plugin.json           # Plugin metadata
+│   └── plugin.json           # 插件元数据
 ├── skills/
 │   └── memory-monitor/
-│       ├── SKILL.md          # Skill entry point
-│       ├── REFERENCE.md      # Technical reference
-│       └── scripts/          # Executable scripts
-└── README.md                 # This file
+│       ├── SKILL.md          # 技能入口
+│       ├── REFERENCE.md      # 技术参考
+│       └── scripts/          # 可执行脚本
+└── README.md                 # 本文件
 ```
 
-## Development
+## 开发
 
-### Adding New Skills
+### 添加新技能
 
-1. Create a new directory under `skills/`
-2. Add a `SKILL.md` file with proper frontmatter
-3. Add optional `REFERENCE.md` for detailed docs
-4. Add any scripts in a `scripts/` subdirectory
+1. 在 `skills/` 下创建新目录
+2. 添加 `SKILL.md` 文件（含正确的 frontmatter）
+3. 添加可选的 `REFERENCE.md` 详细文档
+4. 在 `scripts/` 子目录添加脚本
 
-Example structure:
+示例结构：
 ```
 skills/your-skill/
-├── SKILL.md          # Required
-├── REFERENCE.md      # Optional
-└── scripts/          # Optional
+├── SKILL.md          # 必需
+├── REFERENCE.md      # 可选
+└── scripts/          # 可选
     └── your-script.sh
 ```
 
-### Skill Frontmatter Template
+### 技能 Frontmatter 模板
 
 ```yaml
 ---
 name: your-skill-name
-description: What it does AND when to use it
+description: 功能说明以及使用时机
 ---
 
-# Your Skill Name
+# 技能名称
 
-## Quick Start
-Immediate actionable guidance...
+## 快速开始
+直接可执行的指导...
 ```
 
-## Contributing
+## 卸载
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+```bash
+# 停止并禁用服务
+sudo systemctl stop claude-memory-monitor
+sudo systemctl disable claude-memory-monitor
 
-## License
+# 删除服务文件
+sudo rm /etc/systemd/system/claude-memory-monitor.service
 
-MIT License - see LICENSE file for details
+# 重新加载 systemd
+sudo systemctl daemon-reload
 
-## Author
+# 删除插件目录
+rm -rf ~/.claude/plugins/claude-utilities
+```
+
+## 贡献
+
+欢迎贡献！请随时提交 Pull Request。
+
+## 许可证
+
+MIT License - 详见 LICENSE 文件
+
+## 作者
 
 **yibohub** - [GitHub](https://github.com/yibohub)
 
-## Acknowledgments
+## 致谢
 
-- Built following [Claude Code Plugin Specification](https://github.com/anthropics/skills)
-- Inspired by the need for better memory management in long-running Claude sessions
+- 遵循 [Claude Code Plugin Specification](https://github.com/anthropics/skills) 构建
+- 源于对长时间 Claude 会话更好内存管理的需求

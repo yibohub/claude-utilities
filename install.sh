@@ -6,60 +6,75 @@ set -e
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOOKS_DIR="$HOME/.claude/hooks/SessionStart"
 SKILL_DIR="$PLUGIN_DIR/skills/memory-monitor"
+SERVICE_NAME="claude-memory-monitor"
+SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+SERVICE_TEMPLATE="$SKILL_DIR/claude-memory-monitor.service"
 
-# 检测是否已安装
-if [ -f "$HOOKS_DIR/memory-check.sh" ]; then
-    echo "⚠️  检测到已安装，如需升级请运行: ./update.sh"
+# 检测是否已安装（优先检查系统服务）
+if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+    echo "✅ 系统服务已运行"
+    systemctl status "$SERVICE_NAME" --no-pager
+    exit 0
+elif [ -f "$SERVICE_FILE" ]; then
+    echo "⚠️  检测到已安装，如需重启请运行: sudo systemctl restart $SERVICE_NAME"
     echo ""
-    bash "$SKILL_DIR/scripts/memory-monitor-ctl.sh" status 2>/dev/null || true
+    systemctl status "$SERVICE_NAME" --no-pager 2>/dev/null || true
     exit 0
 fi
 
 echo "🔧 正在安装 claude-utilities..."
 
-# 1. 创建 hooks 目录
-echo "📁 创建 hooks 目录..."
-mkdir -p "$HOOKS_DIR"
+# 1. 安装系统服务
+echo "📦 安装 systemd 系统服务..."
+CURRENT_USER="$(whoami)"
+CURRENT_GROUP="$(id -gn)"
+DAEMON_SCRIPT="$SKILL_DIR/scripts/memory-monitor-daemon.sh"
+LOG_FILE="$SKILL_DIR/memory-monitor.log"
+LOG_DIR="$(dirname "$LOG_FILE")"
 
-# 2. 创建 SessionStart hook
-echo "📝 配置 SessionStart hook..."
-cat > "$HOOKS_DIR/memory-check.sh" << 'EOF'
-#!/bin/bash
-# Memory Monitor SessionStart Hook
-MEMORY_THRESHOLD=85
-ZOMBIE_THRESHOLD=10
+# 生成实际服务文件（替换占位符）
+sed -e "s|USER_PLACEHOLDER|$CURRENT_USER|g" \
+    -e "s|GROUP_PLACEHOLDER|$CURRENT_GROUP|g" \
+    -e "s|WORKING_DIR_PLACEHOLDER|$SKILL_DIR|g" \
+    -e "s|DAEMON_SCRIPT_PLACEHOLDER|$DAEMON_SCRIPT|g" \
+    -e "s|LOG_FILE_PLACEHOLDER|$LOG_FILE|g" \
+    -e "s|LOG_DIR_PLACEHOLDER|$LOG_DIR|g" \
+    "$SERVICE_TEMPLATE" > /tmp/"$SERVICE_NAME.service"
 
-MEMORY_PERCENT=$(free | grep Mem | awk '{printf("%.0f", ($3/$2) * 100)}')
-ZOMBIE_COUNT=$(ps aux | grep "claude$" | grep -v grep | awk '$7 == "?"' | wc -l)
+# 移动到系统目录
+sudo mv /tmp/"$SERVICE_NAME.service" "$SERVICE_FILE"
+sudo chmod 644 "$SERVICE_FILE"
 
-if [ "$MEMORY_PERCENT" -gt $MEMORY_THRESHOLD ] || [ "$ZOMBIE_COUNT" -gt $ZOMBIE_THRESHOLD ]; then
-    echo ""
-    echo "⚠️  内存监控警告"
-    echo "================================"
-    echo "系统内存: ${MEMORY_PERCENT}%"
-    echo "僵尸进程: ${ZOMBIE_COUNT} 个"
-    echo ""
-    echo "建议运行: $HOME/.claude/plugins/claude-utilities/skills/memory-monitor/scripts/memory-monitor.sh"
-    echo "================================"
-    echo ""
+# 2. 重新加载 systemd 并启动服务
+echo "🚀 启动系统服务..."
+sudo systemctl daemon-reload
+sudo systemctl enable "$SERVICE_NAME"
+sudo systemctl start "$SERVICE_NAME"
+
+# 等待服务启动
+sleep 2
+
+# 3. 检查服务状态
+if systemctl is-active --quiet "$SERVICE_NAME"; then
+    echo "✅ 服务启动成功"
+else
+    echo "❌ 服务启动失败，查看状态："
+    sudo systemctl status "$SERVICE_NAME" --no-pager
+    exit 1
 fi
-EOF
-
-chmod +x "$HOOKS_DIR/memory-check.sh"
-
-# 3. 启动内存监控守护进程
-echo "🚀 启动内存监控守护进程..."
-bash "$SKILL_DIR/scripts/memory-monitor-ctl.sh" start 2>/dev/null || true
 
 echo ""
 echo "✅ 安装完成！"
 echo ""
 echo "已配置："
-echo "  ✓ SessionStart hook (会话开始时检查内存)"
+echo "  ✓ systemd 系统服务 (开机自启动)"
 echo "  ✓ 内存监控守护进程 (每5分钟自动检查)"
 echo ""
 echo "管理命令："
-echo "  查看状态: $SKILL_DIR/scripts/memory-monitor-ctl.sh status"
-echo "  停止监控: $SKILL_DIR/scripts/memory-monitor-ctl.sh stop"
-echo "  查看日志: $SKILL_DIR/scripts/memory-monitor-ctl.sh log"
+echo "  查看状态: systemctl status $SERVICE_NAME"
+echo "  停止服务: sudo systemctl stop $SERVICE_NAME"
+echo "  启动服务: sudo systemctl start $SERVICE_NAME"
+echo "  重启服务: sudo systemctl restart $SERVICE_NAME"
+echo "  查看日志: sudo journalctl -u $SERVICE_NAME -f"
+echo "  或查看文件: tail -f $LOG_FILE"
 echo ""
