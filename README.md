@@ -14,7 +14,7 @@ Claude 僵尸进程清理工具，自动监控并清理内存泄漏。
 ### 快速安装（推荐）
 
 ```bash
-git clone https://github.com/yibohub/claude-utilities ~/cleanclaude
+git clone https://github.com/yibohub/cleanclaude ~/cleanclaude
 ~/cleanclaude/install.sh
 ```
 
