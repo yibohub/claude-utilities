@@ -2,10 +2,10 @@
 # Memory Monitor Control
 # 快速启动/停止/查看内存监控守护进程
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DAEMON="$SCRIPT_DIR/memory-monitor-daemon.sh"
-PIDFILE="$SCRIPT_DIR/../memory-monitor.pid"
-LOGFILE="$SCRIPT_DIR/../memory-monitor.log"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DAEMON="$SCRIPT_DIR/lib/memory-monitor-daemon.sh"
+PIDFILE="$SCRIPT_DIR/var/memory-monitor.pid"
+LOGFILE="$SCRIPT_DIR/var/memory-monitor.log"
 SERVICE_NAME="claude-memory-monitor"
 
 # 检测是否使用 systemd 服务
@@ -116,7 +116,7 @@ case "${1:-status}" in
         ;;
 
     check)
-        "$SCRIPT_DIR/memory-monitor.sh"
+        "$SCRIPT_DIR/bin/memory-monitor.sh"
         ;;
 
     log)

@@ -1,14 +1,12 @@
 #!/bin/bash
-# claude-utilities 自动安装脚本
+# CleanClaude 自动安装脚本
 
 set -e
 
-PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HOOKS_DIR="$HOME/.claude/hooks/SessionStart"
-SKILL_DIR="$PLUGIN_DIR/skills/memory-monitor"
+INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVICE_NAME="claude-memory-monitor"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
-SERVICE_TEMPLATE="$SKILL_DIR/claude-memory-monitor.service"
+SERVICE_TEMPLATE="$INSTALL_DIR/systemd/${SERVICE_NAME}.service"
 
 # 检测是否已安装（优先检查系统服务）
 if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
@@ -22,20 +20,24 @@ elif [ -f "$SERVICE_FILE" ]; then
     exit 0
 fi
 
-echo "🔧 正在安装 claude-utilities..."
+echo "🔧 正在安装 CleanClaude..."
 
-# 1. 安装系统服务
+# 1. 确保日志目录存在
+VAR_DIR="$INSTALL_DIR/var"
+mkdir -p "$VAR_DIR"
+
+# 2. 安装系统服务
 echo "📦 安装 systemd 系统服务..."
 CURRENT_USER="$(whoami)"
 CURRENT_GROUP="$(id -gn)"
-DAEMON_SCRIPT="$SKILL_DIR/scripts/memory-monitor-daemon.sh"
-LOG_FILE="$SKILL_DIR/memory-monitor.log"
-LOG_DIR="$(dirname "$LOG_FILE")"
+DAEMON_SCRIPT="$INSTALL_DIR/lib/memory-monitor-daemon.sh"
+LOG_FILE="$VAR_DIR/memory-monitor.log"
+LOG_DIR="$VAR_DIR"
 
 # 生成实际服务文件（替换占位符）
 sed -e "s|USER_PLACEHOLDER|$CURRENT_USER|g" \
     -e "s|GROUP_PLACEHOLDER|$CURRENT_GROUP|g" \
-    -e "s|WORKING_DIR_PLACEHOLDER|$SKILL_DIR|g" \
+    -e "s|WORKING_DIR_PLACEHOLDER|$INSTALL_DIR|g" \
     -e "s|DAEMON_SCRIPT_PLACEHOLDER|$DAEMON_SCRIPT|g" \
     -e "s|LOG_FILE_PLACEHOLDER|$LOG_FILE|g" \
     -e "s|LOG_DIR_PLACEHOLDER|$LOG_DIR|g" \
@@ -45,7 +47,7 @@ sed -e "s|USER_PLACEHOLDER|$CURRENT_USER|g" \
 sudo mv /tmp/"$SERVICE_NAME.service" "$SERVICE_FILE"
 sudo chmod 644 "$SERVICE_FILE"
 
-# 2. 重新加载 systemd 并启动服务
+# 3. 重新加载 systemd 并启动服务
 echo "🚀 启动系统服务..."
 sudo systemctl daemon-reload
 sudo systemctl enable "$SERVICE_NAME"
@@ -54,7 +56,7 @@ sudo systemctl start "$SERVICE_NAME"
 # 等待服务启动
 sleep 2
 
-# 3. 检查服务状态
+# 4. 检查服务状态
 if systemctl is-active --quiet "$SERVICE_NAME"; then
     echo "✅ 服务启动成功"
 else
@@ -68,7 +70,7 @@ echo "✅ 安装完成！"
 echo ""
 echo "已配置："
 echo "  ✓ systemd 系统服务 (开机自启动)"
-echo "  ✓ 内存监控守护进程 (每5分钟自动检查)"
+echo "  ✓ 僵尸进程清理守护进程 (每5分钟自动检查)"
 echo ""
 echo "管理命令："
 echo "  查看状态: systemctl status $SERVICE_NAME"
@@ -77,4 +79,7 @@ echo "  启动服务: sudo systemctl start $SERVICE_NAME"
 echo "  重启服务: sudo systemctl restart $SERVICE_NAME"
 echo "  查看日志: sudo journalctl -u $SERVICE_NAME -f"
 echo "  或查看文件: tail -f $LOG_FILE"
+echo ""
+echo "快捷控制："
+echo "  $INSTALL_DIR/bin/memory-monitor-ctl.sh {start|stop|restart|status|log}"
 echo ""

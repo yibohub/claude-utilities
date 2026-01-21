@@ -1,27 +1,22 @@
 [Unit]
 Description=Claude Memory Monitor Daemon
-Documentation=file:///home/yeeboclaude/.claude/plugins/claude-utilities/skills/memory-monitor/REFERENCE.md
+Documentation=https://github.com/yibohub/claude-utilities
 After=network.target
 
 [Service]
 Type=simple
 User=USER_PLACEHOLDER
-Group=USER_PLACEHOLDER
+Group=GROUP_PLACEHOLDER
 WorkingDirectory=WORKING_DIR_PLACEHOLDER
 Environment="CHECK_INTERVAL=300"
 Environment="MEMORY_THRESHOLD=75"
 Environment="MAX_CLAUDE_PROCESSES=15"
+Environment="AUTO_CLEAN=false"
 ExecStart=DAEMON_SCRIPT_PLACEHOLDER
 Restart=always
 RestartSec=10
 StandardOutput=append:LOG_FILE_PLACEHOLDER
 StandardError=append:LOG_FILE_PLACEHOLDER
-
-# 安全加固（适度配置，允许读写必要目录）
-NoNewPrivileges=false
-PrivateTmp=true
-ProtectSystem=no
-ProtectHome=no
 
 [Install]
 WantedBy=multi-user.target

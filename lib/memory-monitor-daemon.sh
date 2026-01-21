@@ -6,8 +6,8 @@
 CHECK_INTERVAL=${CHECK_INTERVAL:-300}  # 检查间隔（秒），默认 5 分钟
 MEMORY_THRESHOLD=${MEMORY_THRESHOLD:-75}  # 内存阈值
 MAX_CLAUDE_PROCESSES=${MAX_CLAUDE_PROCESSES:-15}  # 最大进程数
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_FILE="$SCRIPT_DIR/../memory-monitor.log"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOG_FILE="$SCRIPT_DIR/var/memory-monitor.log"
 
 # 确保日志目录存在
 mkdir -p "$(dirname "$LOG_FILE")"
